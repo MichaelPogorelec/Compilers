@@ -1,0 +1,20 @@
+/* COSC 4400 - Project 3 */
+package Absyn;
+import java.util.LinkedList;
+
+/**
+ * Xinu Method Call.
+ */
+public class XinuCallExpr extends Expr
+{
+    public String           method;
+    public LinkedList<Expr> args;
+
+    public XinuCallExpr(String method, LinkedList<Expr> args)
+    {
+        this.method = method;
+        this.args   = args;
+    }
+
+    public void accept(Visitor v) { v.visit(this); }
+}
