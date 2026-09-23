@@ -149,11 +149,8 @@ public class PrintVisitor implements Visitor
 		ast.base.accept(this);
 		out.print(")");
     }
-<<<<<<< HEAD
-/* ---- Types ------------------------------------------------ */
-=======
+
     /* ---- Types ------------------------------------------------ */
->>>>>>> 3cbd239520884d66ad8f1ac639c82e9465a7d0c1
     /* Types print inline, with no indent() call, like IdentifierType. */
 
     public void visit(IntegerType ast)
