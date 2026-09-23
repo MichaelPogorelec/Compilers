@@ -149,5 +149,239 @@ public class PrintVisitor implements Visitor
 		ast.base.accept(this);
 		out.print(")");
     }
+    /* ---- Types ------------------------------------------------ */
+    /* Types print inline, with no indent() call, like IdentifierType. */
 
+    public void visit(IntegerType ast)
+    {
+                out.print("IntegerType()");
+    }
+
+    public void visit(BooleanType ast)
+    {
+                out.print("BooleanType()");
+    }
+
+    /* ---- Declarations ----------------------------------------- */
+
+    public void visit(ThreadDecl ast)
+    {
+                indent();
+                out.print("ThreadDecl(");
+                indentCount++;
+                out.print(ast.name);
+                visit(ast.fields);
+                visit(ast.methods);
+                indentCount--;
+                out.print(")");
+    }
+
+    public void visit(VoidDecl ast)
+    {
+                indent();
+                out.print("VoidDecl(");
+                indentCount++;
+                out.print(ast.name);
+                visit(ast.locals);
+                visit(ast.stmts);
+                indentCount--;
+                out.print(")");
+    }
+
+    /* ---- Statements ------------------------------------------- */
+
+    public void visit(BlockStmt ast)
+    {
+                indent();
+                out.print("BlockStmt(");
+                indentCount++;
+                visit(ast.stmts);
+                indentCount--;
+                out.print(")");
+    }
+
+    public void visit(AssignStmt ast)
+    {
+                indent();
+                out.print("AssignStmt(");
+                indentCount++;
+                ast.lhs.accept(this);
+                ast.rhs.accept(this);
+                indentCount--;
+                out.print(")");
+    }
+
+    public void visit(IfStmt ast)
+    {
+                indent();
+                out.print("IfStmt(");
+                indentCount++;
+                ast.test.accept(this);
+                ast.thenStmt.accept(this);
+                if (null == ast.elseStmt)
+            {   indent();   out.print("null");   }
+                else
+            {   ast.elseStmt.accept(this);   }
+                indentCount--;
+                out.print(")");
+    }
+
+    public void visit(WhileStmt ast)
+    {
+                indent();
+                out.print("WhileStmt(");
+                indentCount++;
+                ast.test.accept(this);
+                ast.body.accept(this);
+                indentCount--;
+                out.print(")");
+    }
+
+    /* ---- Binary operators ------------------------------------- */
+    /* One method per operator; all of them print their two operands. */
+
+    public void visit(AddExpr ast)     { binop("AddExpr", ast); }
+    public void visit(SubExpr ast)     { binop("SubExpr", ast); }
+    public void visit(MulExpr ast)     { binop("MulExpr", ast); }
+    public void visit(DivExpr ast)     { binop("DivExpr", ast); }
+    public void visit(AndExpr ast)     { binop("AndExpr", ast); }
+    public void visit(OrExpr ast)      { binop("OrExpr", ast); }
+    public void visit(EqualExpr ast)   { binop("EqualExpr", ast); }
+    public void visit(LesserExpr ast)  { binop("LesserExpr", ast); }
+    public void visit(GreaterExpr ast) { binop("GreaterExpr", ast); }
+
+    private void binop(String name, BinOpExpr ast)
+    {
+                indent();
+                out.print(name + "(");
+                indentCount++;
+                ast.e1.accept(this);
+                ast.e2.accept(this);
+                indentCount--;
+                out.print(")");
+    }
+
+    /* ---- Unary operators -------------------------------------- */
+
+    public void visit(NegExpr ast)
+    {
+                indent();
+                out.print("NegExpr(");
+                indentCount++;
+                ast.operand.accept(this);
+                indentCount--;
+                out.print(")");
+    }
+
+    public void visit(NotExpr ast)
+    {
+                indent();
+                out.print("NotExpr(");
+                indentCount++;
+                ast.operand.accept(this);
+                indentCount--;
+                out.print(")");
+    }
+
+    /* ---- Constants -------------------------------------------- */
+
+    public void visit(TrueExpr ast)
+    {
+                indent();
+                out.print("TrueExpr()");
+    }
+
+    public void visit(FalseExpr ast)
+    {
+                indent();
+                out.print("FalseExpr()");
+    }
+
+    public void visit(ThisExpr ast)
+    {
+                indent();
+                out.print("ThisExpr()");
+    }
+
+    public void visit(NullExpr ast)
+    {
+                indent();
+                out.print("NullExpr()");
+    }
+
+    /* ---- References ------------------------------------------- */
+
+    public void visit(IdentifierExpr ast)
+    {
+                indent();
+                out.print("IdentifierExpr(" + ast.id + ")");
+    }
+
+    public void visit(FieldExpr ast)
+    {
+                indent();
+                out.print("FieldExpr(");
+                indentCount++;
+                ast.object.accept(this);
+                out.print(" " + ast.name);
+                indentCount--;
+                out.print(")");
+    }
+
+    public void visit(ArrayExpr ast)
+    {
+                indent();
+                out.print("ArrayExpr(");
+                indentCount++;
+                ast.array.accept(this);
+                ast.index.accept(this);
+                indentCount--;
+                out.print(")");
+    }
+
+    /* ---- Calls ------------------------------------------------ */
+
+    public void visit(CallExpr ast)
+    {
+                indent();
+                out.print("CallExpr(");
+                indentCount++;
+                ast.object.accept(this);
+                out.print(" " + ast.method);
+                visit(ast.args);
+                indentCount--;
+                out.print(")");
+    }
+
+    public void visit(XinuCallExpr ast)
+    {
+                indent();
+                out.print("XinuCallExpr(");
+                indentCount++;
+                out.print(ast.method);
+                visit(ast.args);
+                indentCount--;
+                out.print(")");
+    }
+
+    /* ---- Allocation ------------------------------------------- */
+
+    public void visit(NewObjectExpr ast)
+    {
+                indent();
+                out.print("NewObjectExpr(");
+                ast.type.accept(this);
+                out.print(")");
+    }
+
+    public void visit(NewArrayExpr ast)
+    {
+                indent();
+                out.print("NewArrayExpr(");
+                indentCount++;
+                ast.type.accept(this);
+                visit(ast.dims);
+                indentCount--;
+                out.print(")");
+    }
 }
