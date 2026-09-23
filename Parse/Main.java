@@ -1,3 +1,12 @@
+/**
+ * COSC 4400 - Project 3
+ * Parse for minijava programming language as shown in textbook
+ * @authors Michael Pogorelec
+ * Instructor Dr. Brylow
+ * TA-BOT:MAILTO michael.pogorelec@marquette.edu
+ */
+
+
 package Parse;
 
 import java.io.Reader;
