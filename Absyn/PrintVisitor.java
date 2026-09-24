@@ -155,12 +155,12 @@ public class PrintVisitor implements Visitor
 
     public void visit(IntegerType ast)
     {
-                out.print("IntegerType()");
+                out.print("IntegerType");
     }
 
     public void visit(BooleanType ast)
     {
-                out.print("BooleanType()");
+                out.print("BooleanType");
     }
 
     /* ---- Declarations ----------------------------------------- */
@@ -274,10 +274,10 @@ public class PrintVisitor implements Visitor
                 out.print(")");
     }
 
-    public void visit(NotExpr ast)
+    public void visit(NotEqExpr ast)
     {
                 indent();
-                out.print("NotExpr(");
+                out.print("NotEqExpr(");
                 indentCount++;
                 ast.operand.accept(this);
                 indentCount--;
@@ -289,25 +289,27 @@ public class PrintVisitor implements Visitor
     public void visit(TrueExpr ast)
     {
                 indent();
-                out.print("TrueExpr()");
+                out.print("TrueExpr");
     }
 
     public void visit(FalseExpr ast)
     {
                 indent();
-                out.print("FalseExpr()");
+                out.print("FalseExpr");
     }
 
     public void visit(ThisExpr ast)
     {
                 indent();
-                out.print("ThisExpr()");
+                out.println("ThisExpr");
+		indent();
+
     }
 
     public void visit(NullExpr ast)
     {
                 indent();
-                out.print("NullExpr()");
+                out.print("NullExpr");
     }
 
     /* ---- References ------------------------------------------- */
@@ -316,6 +318,8 @@ public class PrintVisitor implements Visitor
     {
                 indent();
                 out.print("IdentifierExpr(" + ast.id + ")");
+		indent();
+
     }
 
     public void visit(FieldExpr ast)
@@ -348,6 +352,7 @@ public class PrintVisitor implements Visitor
                 out.print("CallExpr(");
                 indentCount++;
                 ast.object.accept(this);
+		indent();
                 out.print(" " + ast.method);
                 visit(ast.args);
                 indentCount--;
@@ -373,6 +378,7 @@ public class PrintVisitor implements Visitor
                 out.print("NewObjectExpr(");
                 ast.type.accept(this);
                 out.print(")");
+		indent();
     }
 
     public void visit(NewArrayExpr ast)
@@ -384,5 +390,6 @@ public class PrintVisitor implements Visitor
                 visit(ast.dims);
                 indentCount--;
                 out.print(")");
+		indent();
     }
 }

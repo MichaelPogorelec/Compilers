@@ -4,11 +4,11 @@ package Absyn;
 /**
  * Boolean (Logical) Not Expressions.
  */
-public class NotExpr extends Expr
+public class NotEqExpr extends Expr
 {
     public Expr operand;
 
-    public NotExpr(Expr operand) { this.operand = operand; }
+    public NotEqExpr(Expr operand) { this.operand = operand; }
 
     public void accept(Visitor v) { v.visit(this); }
 }

@@ -38,7 +38,7 @@ public interface Visitor
     public void visit(LesserExpr ast);
     public void visit(GreaterExpr ast);
     public void visit(NegExpr ast);
-    public void visit(NotExpr ast);
+    public void visit(NotEqExpr ast);
     public void visit(TrueExpr ast);
     public void visit(FalseExpr ast);
     public void visit(ThisExpr ast);
