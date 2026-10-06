@@ -1,9 +1,8 @@
-/* COSC 4400 - Project 3 */
 package Absyn;
 import java.util.LinkedList;
 
 /**
- * Run (Void) Method Declaration structure.
+ * Void Method Declaration struct.
  */
 public class VoidDecl extends MethodDecl
 {

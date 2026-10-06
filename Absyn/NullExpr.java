@@ -1,8 +1,7 @@
-/* COSC 4400 - Project 3 */
 package Absyn;
 
 /**
- * The "null" expression.
+ * The NULL expression.
  */
 public class NullExpr extends Expr
 {

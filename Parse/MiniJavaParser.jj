@@ -67,8 +67,8 @@ TOKEN :
         | < "int" > | < "boolean" >
 
         /* Remaining operators. */
-        | < "=" > | < "||" > | < "&&" > | < "==" > | < "<" > | < ">" >
-        | < "+" > | < "-" > | < "*" > | < "/" > | < "!" >
+        | < "=" > | < "||" > | < "&&" > | < "==" > | < "!="> | < "<" > | < ">" >
+        | < "+" > | < "-" > | < "*" > | < "/" > | < "!" >  
 }
 
 /************/
@@ -423,7 +423,7 @@ Absyn.Expr UnaryExpr() :
 { Absyn.Expr e; }
 {
           "-" e = UnaryExpr()   { return new Absyn.NegExpr(e); }
-        | "!" e = UnaryExpr()   { return new Absyn.NotEqExpr(e); }
+        | "!" e = UnaryExpr()   { return new Absyn.NotExpr(e); }
         | e = PostfixExpr()     { return e; }
 }
 

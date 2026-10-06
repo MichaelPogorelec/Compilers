@@ -1,14 +1,16 @@
-/* COSC 4400 - Project 3 */
 package Absyn;
 
 /**
- * Boolean (Logical) Not Expressions.
+ * Boolean Not Equal Expressions.
  */
-public class NotEqExpr extends Expr
+
+public class NotEqExpr extends BinOpExpr
 {
-    public Expr operand;
+    public NotEqExpr(Expr e1, Expr e2) { super(e1, e2); }
 
-    public NotEqExpr(Expr operand) { this.operand = operand; }
-
-    public void accept(Visitor v) { v.visit(this); }
+    /** Wisitor Pattern dispatch. */
+    public void accept(Visitor v)
+    {
+        v.visit(this);
+    }
 }

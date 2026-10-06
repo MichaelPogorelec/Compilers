@@ -1,4 +1,3 @@
-/* COSC 4400 - Project 3 */
 package Absyn;
 
 /**

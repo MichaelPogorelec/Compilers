@@ -1,8 +1,7 @@
-/* COSC 4400 - Project 3 */
 package Absyn;
 
 /**
- * Boolean (Logical) Equality Expressions.
+ * Boolean Expressions.
  */
 public class EqualExpr extends BinOpExpr
 {

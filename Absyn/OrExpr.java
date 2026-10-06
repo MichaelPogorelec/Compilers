@@ -1,8 +1,7 @@
-/* COSC 4400 - Project 3 */
 package Absyn;
 
 /**
- * Boolean (Logical) Or Expressions.
+ * Boolean Or Expressions.
  */
 public class OrExpr extends BinOpExpr
 {

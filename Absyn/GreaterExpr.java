@@ -1,8 +1,7 @@
-/* COSC 4400 - Project 3 */
 package Absyn;
 
 /**
- * Greater-Than Comparison Expressions.
+ * Greater Than Expressions.
  */
 public class GreaterExpr extends BinOpExpr
 {

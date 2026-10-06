@@ -1,8 +1,7 @@
-/* COSC 4400 - Project 3 */
 package Absyn;
 
 /**
- * Less-Than Comparison Expressions.
+ * Less Than Expressions.
  */
 public class LesserExpr extends BinOpExpr
 {

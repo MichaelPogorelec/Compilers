@@ -248,6 +248,7 @@ public class PrintVisitor implements Visitor
     public void visit(AndExpr ast)     { binop("AndExpr", ast); }
     public void visit(OrExpr ast)      { binop("OrExpr", ast); }
     public void visit(EqualExpr ast)   { binop("EqualExpr", ast); }
+    public void visit(NotEqExpr ast)   { binop("NotEqExpr", ast); }
     public void visit(LesserExpr ast)  { binop("LesserExpr", ast); }
     public void visit(GreaterExpr ast) { binop("GreaterExpr", ast); }
 
@@ -274,10 +275,10 @@ public class PrintVisitor implements Visitor
                 out.print(")");
     }
 
-    public void visit(NotEqExpr ast)
+    public void visit(NotExpr ast)
     {
                 indent();
-                out.print("NotEqExpr(");
+                out.print("NotExpr(");
                 indentCount++;
                 ast.operand.accept(this);
                 indentCount--;

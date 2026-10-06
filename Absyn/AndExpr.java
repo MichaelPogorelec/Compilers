@@ -1,8 +1,7 @@
-/* COSC 4400 - Project 3 */
 package Absyn;
 
 /**
- * Boolean (Logical) And Expressions.
+ * Boolean And Expressions.
  */
 public class AndExpr extends BinOpExpr
 {

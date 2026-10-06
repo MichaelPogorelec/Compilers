@@ -1,8 +1,7 @@
-/* COSC 4400 - Project 3 */
 package Absyn;
 
 /**
- * Field lookup on object reference.
+ * Field lookup on object ref.
  */
 public class FieldExpr extends AssignableExpr
 {
