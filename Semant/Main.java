@@ -15,7 +15,9 @@ public class Main
         {
             Program program = new MiniJavaParser(
                 new BufferedReader(new InputStreamReader(System.in))).Goal();
-            new TypeChecker().check(program);
+            TypeChecker checker = new TypeChecker();
+            if (checker.check(program))
+                checker.printDescriptors(program);
         }
         catch (ParseException exception)
         {

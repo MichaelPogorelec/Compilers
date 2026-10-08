@@ -5,8 +5,10 @@ import java.util.AbstractList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.io.PrintWriter;
 
 import Absyn.AddExpr;
 import Absyn.AndExpr;
@@ -76,9 +78,8 @@ public class TypeChecker
     private final Map<String, ClassDecl> firstDeclarations =
         new HashMap<String, ClassDecl>();
     private final Set<CLASS> reportedCycles = new HashSet<CLASS>();
-    private ClassDecl currentDeclaration;
     private CLASS currentClass;
-    private String currentMethod;
+    private int errorCount;
 
     public TypeChecker()
     {
@@ -86,19 +87,184 @@ public class TypeChecker
         classes.put("Thread", new CLASS("Thread"));
     }
 
-    public void check(Program program)
+    public boolean check(Program program)
     {
         collectClasses(program.classes);
         resolveParents(program.classes);
         checkInheritanceCycles(program.classes);
         collectMembers(program.classes);
+        populateInstances(program.classes);
         checkOverrides(program.classes);
         for (ClassDecl declaration : program.classes)
         {
             if (firstDeclarations.get(declaration.name) == declaration)
                 checkClass(declaration);
         }
+            return errorCount == 0;
     }
+
+        public void printDescriptors(Program program)
+        {
+            PrintWriter out = new PrintWriter(System.out);
+            for (ClassDecl declaration : program.classes)
+            {
+                if (firstDeclarations.get(declaration.name) != declaration)
+                    continue;
+                printClass((CLASS) classes.get(declaration.name), out);
+                out.println();
+                out.println();
+            }
+            out.flush();
+        }
+
+        private void printClass(CLASS descriptor, PrintWriter out)
+        {
+            out.print("CLASS(" + descriptor.name);
+            out.println();
+            indent(out, 1);
+            out.print(descriptor.parent == null ? "null" : descriptor.parent.name);
+            out.println();
+            printRecord(descriptor.methods, 1, out);
+            out.println();
+            printRecord(descriptor.fields, 1, out);
+            out.println();
+            printObject(descriptor.instance, out);
+            out.print(")");
+        }
+
+        private void printObject(OBJECT object, PrintWriter out)
+        {
+            indent(out, 1);
+            out.print("OBJECT(" + object.myClass.name);
+            out.println();
+            printRecord(object.methods, 2, out);
+            out.println();
+            printRecord(object.fields, 2, out);
+            out.print(")");
+        }
+
+        private void printRecord(RECORD record, int depth, PrintWriter out)
+        {
+            indent(out, depth);
+            out.print("RECORD(");
+            if (record.size() == 0)
+            {
+                out.print(")");
+                return;
+            }
+            out.println();
+            int index = 0;
+            for (FIELD field : record)
+            {
+                printField(field, depth + 1, out);
+                if (++index < record.size())
+                    out.println();
+            }
+            out.print(")");
+        }
+
+        private void printField(FIELD field, int depth, PrintWriter out)
+        {
+            indent(out, depth);
+            out.print("FIELD(" + field.index + " " + field.name);
+            out.println();
+            printType(field.type, depth + 1, out);
+            out.print(")");
+        }
+
+        private void printType(Types.Type type, int depth, PrintWriter out)
+        {
+            if (type instanceof FUNCTION)
+            {
+                FUNCTION function = (FUNCTION) type;
+                indent(out, depth);
+                out.print("FUNCTION(" + function.name);
+                out.println();
+                indent(out, depth + 1);
+                printSimpleType(function.self, out);
+                out.println();
+                printRecord(function.formals, depth + 1, out);
+                out.println();
+                printType(function.result, depth + 1, out);
+                out.print(")");
+            }
+            else if (type instanceof ARRAY)
+            {
+                indent(out, depth);
+                out.print("ARRAY(");
+                out.println();
+                printType(((ARRAY) type).element, depth + 1, out);
+                out.print(")");
+            }
+            else
+            {
+                indent(out, depth);
+                printSimpleType(type, out);
+            }
+        }
+
+        private void printSimpleType(Types.Type type, PrintWriter out)
+        {
+            if (type instanceof OBJECT)
+                out.print("OBJECT(" + ((OBJECT) type).myClass.name + ")");
+            else if (type instanceof INT)
+                out.print("INT");
+            else if (type instanceof BOOLEAN)
+                out.print("BOOLEAN");
+            else if (type instanceof VOID)
+                out.print("VOID");
+            else if (type instanceof NIL)
+                out.print("NIL");
+            else
+                out.print(type == null ? "null" : type.toString());
+        }
+
+        private void indent(PrintWriter out, int depth)
+        {
+            for (int index = 0; index < depth; index++)
+                out.print(' ');
+        }
+
+        private void populateInstances(AbstractList<ClassDecl> declarations)
+        {
+            Set<CLASS> populated = java.util.Collections.newSetFromMap(
+                new IdentityHashMap<CLASS, Boolean>());
+            for (ClassDecl declaration : declarations)
+            {
+                if (firstDeclarations.get(declaration.name) == declaration)
+                    populateInstance((CLASS) classes.get(declaration.name), populated);
+            }
+        }
+
+        private void populateInstance(CLASS descriptor, Set<CLASS> populated)
+        {
+            if (!populated.add(descriptor))
+                return;
+            if (descriptor.parent != null)
+                populateInstance(descriptor.parent, populated);
+
+            LinkedHashMap<String, Types.Type> methods =
+                new LinkedHashMap<String, Types.Type>();
+            if (descriptor.parent != null)
+                for (FIELD method : descriptor.parent.instance.methods)
+                    methods.put(method.name, method.type);
+            for (FIELD method : descriptor.methods)
+                methods.put(method.name, method.type);
+
+            RECORD effectiveMethods = new RECORD();
+            for (Map.Entry<String, Types.Type> method : methods.entrySet())
+                effectiveMethods.put(method.getValue(), method.getKey());
+
+            RECORD effectiveFields = new RECORD();
+            if (descriptor.parent != null)
+                for (FIELD field : descriptor.parent.instance.fields)
+                    effectiveFields.put(field.type, field.name);
+            for (FIELD field : descriptor.fields)
+                effectiveFields.put(field.type, field.name);
+
+            descriptor.instance.methods = effectiveMethods;
+            descriptor.instance.fields = effectiveFields;
+        }
 
     private void collectClasses(AbstractList<ClassDecl> declarations)
     {
@@ -167,7 +333,6 @@ public class TypeChecker
         {
             if (firstDeclarations.get(declaration.name) != declaration)
                 continue;
-            currentDeclaration = declaration;
             CLASS descriptor = (CLASS) classes.get(declaration.name);
             Set<String> names = new HashSet<String>();
             for (VarDecl field : declaration.fields)
@@ -195,7 +360,6 @@ public class TypeChecker
                     descriptor.instance, formals, result), method.name);
             }
         }
-        currentDeclaration = null;
     }
 
     private void checkOverrides(AbstractList<ClassDecl> declarations)
@@ -233,17 +397,14 @@ public class TypeChecker
 
     private void checkClass(ClassDecl declaration)
     {
-        currentDeclaration = declaration;
         currentClass = (CLASS) classes.get(declaration.name);
         for (MethodDecl method : declaration.methods)
             checkMethod(method);
         currentClass = null;
-        currentDeclaration = null;
     }
 
     private void checkMethod(MethodDecl method)
     {
-        currentMethod = method.name;
         variables.beginScope();
         Set<String> names = new HashSet<String>();
         for (Formal formal : method.params)
@@ -269,7 +430,6 @@ public class TypeChecker
         if (!(method instanceof VoidDecl) && method.returnType != null)
             require(resolveType(method.returnType), checkExpr(method.returnVal));
         variables.endScope();
-        currentMethod = null;
     }
 
     private Types.Type resolveType(Type type)
@@ -606,6 +766,7 @@ public class TypeChecker
 
     private void error(String message)
     {
+        errorCount++;
         System.out.println("ERROR " + message);
     }
 }
