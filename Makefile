@@ -1,4 +1,4 @@
-JFLAGS=-cp .
+FLAGS=-cp .
 JAR=jar
 JAVA=java
 JAVAC=javac

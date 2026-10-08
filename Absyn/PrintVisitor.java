@@ -145,6 +145,7 @@ public class PrintVisitor implements Visitor
 
     public void visit(ArrayType ast)
     {
+		indent();
 		out.print("ArrayType(");
 		ast.base.accept(this);
 		out.print(")");
@@ -387,6 +388,5 @@ public class PrintVisitor implements Visitor
                 visit(ast.dims);
                 indentCount--;
                 out.print(")");
-		indent();
     }
 }

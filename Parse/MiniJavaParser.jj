@@ -388,6 +388,14 @@ Absyn.Expr EqualExpr() :
         { return e1; }
 }
 
+Absyn.Expr NotEqExpr() :
+{ Absyn.Expr e1, e2; }
+{
+	e1 = RelExpr()
+	( "!=" e2 = RelExpr() { e1 = new Absyn.NotEqExpr(e1, e2); } )*
+	{return e1; }
+}
+
 Absyn.Expr RelExpr() :
 { Absyn.Expr e1, e2; }
 {
