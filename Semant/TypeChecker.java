@@ -77,9 +77,11 @@ public class TypeChecker
         java.util.Collections.newSetFromMap(new IdentityHashMap<Type, Boolean>());
     private final Map<String, ClassDecl> firstDeclarations =
         new HashMap<String, ClassDecl>();
-    private final Set<CLASS> reportedCycles = new HashSet<CLASS>();
     private CLASS currentClass;
     private int errorCount;
+
+    /** Project 5: set true to also type-check method bodies. */
+    private boolean checkBodies = false;
 
     public TypeChecker()
     {
@@ -95,10 +97,13 @@ public class TypeChecker
         collectMembers(program.classes);
         populateInstances(program.classes);
         checkOverrides(program.classes);
-        for (ClassDecl declaration : program.classes)
+        if (checkBodies)
         {
-            if (firstDeclarations.get(declaration.name) == declaration)
-                checkClass(declaration);
+            for (ClassDecl declaration : program.classes)
+            {
+                if (firstDeclarations.get(declaration.name) == declaration)
+                    checkClass(declaration);
+            }
         }
             return errorCount == 0;
     }
@@ -110,8 +115,8 @@ public class TypeChecker
             {
                 if (firstDeclarations.get(declaration.name) != declaration)
                     continue;
-                printClass((CLASS) classes.get(declaration.name), out);
                 out.println();
+                printClass((CLASS) classes.get(declaration.name), out);
                 out.println();
             }
             out.flush();
@@ -272,7 +277,7 @@ public class TypeChecker
         {
             if (firstDeclarations.containsKey(declaration.name))
             {
-                error("duplicate class");
+                error("duplicate class: " + declaration.name);
                 continue;
             }
             firstDeclarations.put(declaration.name, declaration);
@@ -290,7 +295,7 @@ public class TypeChecker
             CLASS child = (CLASS) classes.get(declaration.name);
             Object parent = classes.get(declaration.parent);
             if (!(parent instanceof CLASS))
-                error("cannot resolve parent class " + declaration.parent);
+                error("cannot resolve parent class: " + declaration.parent);
             else
                 child.parent = (CLASS) parent;
         }
@@ -298,33 +303,29 @@ public class TypeChecker
 
     private void checkInheritanceCycles(AbstractList<ClassDecl> declarations)
     {
-        Map<CLASS, Integer> states = new IdentityHashMap<CLASS, Integer>();
+        ArrayList<CLASS> cyclic = new ArrayList<CLASS>();
         for (ClassDecl declaration : declarations)
         {
-            if (firstDeclarations.get(declaration.name) == declaration)
-                visitParent((CLASS) classes.get(declaration.name), states);
-        }
-    }
-
-    private void visitParent(CLASS type, Map<CLASS, Integer> states)
-    {
-        Integer state = states.get(type);
-        if (state != null)
-            return;
-        states.put(type, 1);
-        if (type.parent != null)
-        {
-            Integer parentState = states.get(type.parent);
-            if (parentState != null && parentState == 1)
+            if (firstDeclarations.get(declaration.name) != declaration)
+                continue;
+            CLASS start = (CLASS) classes.get(declaration.name);
+            Set<CLASS> seen = new HashSet<CLASS>();
+            for (CLASS current = start.parent;
+                 current != null && seen.add(current);
+                 current = current.parent)
             {
-                if (reportedCycles.add(type.parent))
-                    error("cyclic inheritance involving " + type.parent.name);
-                type.parent = null;
+                if (current == start)
+                {
+                    error("cyclic inheritance involving " + start.name);
+                    cyclic.add(start);
+                    break;
+                }
             }
-            else if (parentState == null)
-                visitParent(type.parent, states);
         }
-        states.put(type, 2);
+        // Break the cycles only after all of them are reported, so later
+        // passes cannot loop forever.
+        for (CLASS descriptor : cyclic)
+            descriptor.parent = null;
     }
 
     private void collectMembers(AbstractList<ClassDecl> declarations)
@@ -384,7 +385,7 @@ public class TypeChecker
 
     private boolean sameSignature(FUNCTION left, FUNCTION right)
     {
-        if (!sameType(left.result, right.result) ||
+        if (!assignable(left.result, right.result) ||
             left.formals.size() != right.formals.size())
             return false;
         java.util.Iterator<FIELD> first = left.formals.iterator();
@@ -767,6 +768,6 @@ public class TypeChecker
     private void error(String message)
     {
         errorCount++;
-        System.out.println("ERROR " + message);
+        System.out.println("ERROR " + message + ": line not available");
     }
 }
