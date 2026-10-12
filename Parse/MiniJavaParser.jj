@@ -384,17 +384,11 @@ Absyn.Expr EqualExpr() :
 { Absyn.Expr e1, e2; }
 {
         e1 = RelExpr()
-        ( "==" e2 = RelExpr() { e1 = new Absyn.EqualExpr(e1, e2); } )*
+        ( "==" e2 = RelExpr() { e1 = new Absyn.EqualExpr(e1, e2); }
+	| "!=" e2 = RelExpr() { e1 = new Absyn.NotEqExpr(e1, e2); } )*
         { return e1; }
 }
 
-Absyn.Expr NotEqExpr() :
-{ Absyn.Expr e1, e2; }
-{
-	e1 = RelExpr()
-	( "!=" e2 = RelExpr() { e1 = new Absyn.NotEqExpr(e1, e2); } )*
-	{return e1; }
-}
 
 Absyn.Expr RelExpr() :
 { Absyn.Expr e1, e2; }
