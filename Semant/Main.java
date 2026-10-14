@@ -1,16 +1,10 @@
-/**
- * COSC 5400 - Project 5
- * Mini Java compiler that compiles through the type checking semantic analysis phase
- * @authors Michael Pogorelec
- * Instructor Dr. Brylow
- * TA-BOT:MAILTO michael.pogorelec@marquette.edu
- * */
-
 package Semant;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 
+import Absyn.PrintVisitor;
 import Absyn.Program;
 import Parse.MiniJavaParser;
 import Parse.ParseException;
@@ -25,7 +19,11 @@ public class Main
                 new BufferedReader(new InputStreamReader(System.in))).Goal();
             TypeChecker checker = new TypeChecker();
             if (checker.check(program))
-                checker.printDescriptors(program);
+            {
+                PrintWriter writer = new PrintWriter(System.out);
+                new PrintVisitor(writer).visit(program);
+                writer.flush();
+            }
         }
         catch (ParseException exception)
         {

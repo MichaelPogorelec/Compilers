@@ -80,6 +80,7 @@ public class TypeChecker
     private CLASS currentClass;
     private int errorCount;
 
+    /** Project 5: set true to also type-check method bodies. */
     private boolean checkBodies = true;
 
     public TypeChecker()
@@ -281,6 +282,7 @@ public class TypeChecker
             }
             firstDeclarations.put(declaration.name, declaration);
             classes.put(declaration.name, new CLASS(declaration.name));
+            declaration.descriptor = (CLASS) classes.get(declaration.name);
         }
     }
 
@@ -342,7 +344,8 @@ public class TypeChecker
                     error(field.name + " is already defined in " + declaration.name);
                     continue;
                 }
-                descriptor.fields.put(resolveType(field.type), field.name);
+                field.resolved = resolveType(field.type);
+                descriptor.fields.put(field.resolved, field.name);
             }
             for (MethodDecl method : declaration.methods)
             {
@@ -356,8 +359,9 @@ public class TypeChecker
                     formals.put(resolveType(formal.type), formal.name);
                 Types.Type result = method.returnType == null
                     ? new VOID() : resolveType(method.returnType);
-                descriptor.methods.put(new FUNCTION(method.name,
-                    descriptor.instance, formals, result), method.name);
+                method.descriptor = new FUNCTION(method.name,
+                    descriptor.instance, formals, result);
+                descriptor.methods.put(method.descriptor, method.name);
             }
         }
     }
@@ -418,6 +422,7 @@ public class TypeChecker
         for (VarDecl local : method.locals)
         {
             Types.Type type = resolveType(local.type);
+            local.resolved = type;
             if (!names.add(local.name))
                 error(local.name + " is already defined in " + method.name);
             else
@@ -592,6 +597,8 @@ public class TypeChecker
         {
             FieldExpr access = (FieldExpr) expression;
             Types.Type receiver = checkExpr(access.object);
+            if (receiver instanceof ARRAY && access.name.equals("length"))
+                return new INT();
             CLASS descriptor = objectClass(receiver);
             if (receiver == null)
                 return null;
@@ -603,6 +610,11 @@ public class TypeChecker
             FIELD field = findField(descriptor, access.name);
             if (field == null)
                 error("cannot resolve symbol " + access.name);
+            else
+            {
+                FIELD slot = descriptor.instance.fields.get(access.name);
+                access.index = slot == null ? -1 : slot.index;
+            }
             return field == null ? null : field.type;
         }
         if (expression instanceof ArrayExpr)
@@ -631,6 +643,11 @@ public class TypeChecker
         FUNCTION method = descriptor == null ? null : findMethod(descriptor, call.method);
         if (method == null && descriptor != null)
             error("cannot resolve method " + call.method);
+        if (method != null)
+        {
+            FIELD slot = descriptor.instance.methods.get(call.method);
+            call.index = slot == null ? -1 : slot.index;
+        }
 
         ArrayList<Types.Type> arguments = new ArrayList<Types.Type>();
         for (Expr argument : call.args)
