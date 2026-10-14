@@ -80,8 +80,7 @@ public class TypeChecker
     private CLASS currentClass;
     private int errorCount;
 
-    /** Project 5: set true to also type-check method bodies. */
-    private boolean checkBodies = false;
+    private boolean checkBodies = true;
 
     public TypeChecker()
     {

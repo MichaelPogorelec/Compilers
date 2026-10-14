@@ -1,3 +1,11 @@
+/**
+ * COSC 5400 - Project 5
+ * Mini Java compiler that compiles through the type checking semantic analysis phase
+ * @authors Michael Pogorelec
+ * Instructor Dr. Brylow
+ * TA-BOT:MAILTO michael.pogorelec@marquette.edu
+ * */
+
 package Semant;
 
 import java.io.BufferedReader;
