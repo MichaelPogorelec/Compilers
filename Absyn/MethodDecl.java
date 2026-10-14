@@ -15,6 +15,8 @@ public class MethodDecl extends Absyn
     public LinkedList<VarDecl> locals;
     public LinkedList<Stmt> stmts;
     public Expr returnVal;
+    /** Filled in by the type checker. */
+    public Types.FUNCTION descriptor;
  
     public MethodDecl(Type returnType,
 		      boolean synced,

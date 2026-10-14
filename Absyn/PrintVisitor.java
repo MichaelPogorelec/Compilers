@@ -71,6 +71,7 @@ public class PrintVisitor implements Visitor
 		out.print(ast.name + " " + ast.parent); 
 		visit(ast.fields);
 		visit(ast.methods);
+		printClassDesc(ast.descriptor);
 		indentCount--;
 		out.print(")");
     }
@@ -90,6 +91,7 @@ public class PrintVisitor implements Visitor
         visit(ast.locals);
 		visit(ast.stmts);
 		ast.returnVal.accept(this);
+		printTypeDesc(ast.descriptor);
 		indentCount--;
 		out.print(")");
     }
@@ -117,6 +119,10 @@ public class PrintVisitor implements Visitor
 	    {   out.print(" null");   } 
 		else
 	    { ast.init.accept(this); }
+		out.print(" ");
+		indentCount++;
+		printTypeDesc(ast.resolved);
+		indentCount--;
 		out.print(")");
     }
 
@@ -145,7 +151,6 @@ public class PrintVisitor implements Visitor
 
     public void visit(ArrayType ast)
     {
-		indent();
 		out.print("ArrayType(");
 		ast.base.accept(this);
 		out.print(")");
@@ -174,6 +179,7 @@ public class PrintVisitor implements Visitor
                 out.print(ast.name);
                 visit(ast.fields);
                 visit(ast.methods);
+                printClassDesc(ast.descriptor);
                 indentCount--;
                 out.print(")");
     }
@@ -186,6 +192,7 @@ public class PrintVisitor implements Visitor
                 out.print(ast.name);
                 visit(ast.locals);
                 visit(ast.stmts);
+                printTypeDesc(ast.descriptor);
                 indentCount--;
                 out.print(")");
     }
@@ -303,7 +310,7 @@ public class PrintVisitor implements Visitor
     public void visit(ThisExpr ast)
     {
                 indent();
-                out.println("ThisExpr");
+                out.print("ThisExpr");
 
     }
 
@@ -328,7 +335,10 @@ public class PrintVisitor implements Visitor
                 out.print("FieldExpr(");
                 indentCount++;
                 ast.object.accept(this);
-                out.print(" " + ast.name);
+                indent();
+                out.print(ast.name);
+                indent();
+                out.print(ast.index);
                 indentCount--;
                 out.print(")");
     }
@@ -352,8 +362,11 @@ public class PrintVisitor implements Visitor
                 out.print("CallExpr(");
                 indentCount++;
                 ast.object.accept(this);
-                out.print(" " + ast.method);
+                indent();
+                out.print(ast.method);
                 visit(ast.args);
+                indent();
+                out.print(ast.index);
                 indentCount--;
                 out.print(")");
     }
@@ -388,5 +401,84 @@ public class PrintVisitor implements Visitor
                 visit(ast.dims);
                 indentCount--;
                 out.print(")");
+    }
+    /* ---- Type descriptors (the checker's annotations) ------------------
+     * Same layout as the descriptor dump, but every line starts with
+     * indent() so a descriptor can nest inside the AST dump.            */
+
+    private String simpleType(Types.Type t)
+    {
+                if (t instanceof Types.OBJECT)
+            { return "OBJECT(" + ((Types.OBJECT) t).myClass.name + ")"; }
+                if (t instanceof Types.INT)      { return "INT"; }
+                if (t instanceof Types.BOOLEAN)  { return "BOOLEAN"; }
+                if (t instanceof Types.VOID)     { return "VOID"; }
+                if (t instanceof Types.NIL)      { return "NIL"; }
+                return (null == t) ? "null" : t.toString();
+    }
+
+    private void printClassDesc(Types.CLASS c)
+    {
+                indent();
+                out.print("CLASS(" + c.name);
+                indentCount++;
+                indent();
+                out.print(null == c.parent ? "null" : c.parent.name);
+                printRecordDesc(c.methods);
+                printRecordDesc(c.fields);
+                indent();
+                out.print("OBJECT(" + c.instance.myClass.name);
+                indentCount++;
+                printRecordDesc(c.instance.methods);
+                printRecordDesc(c.instance.fields);
+                indentCount--;
+                out.print(")");
+                indentCount--;
+                out.print(")");
+    }
+
+    private void printRecordDesc(Types.RECORD r)
+    {
+                indent();
+                out.print("RECORD(");
+                indentCount++;
+                for (Types.FIELD f : r)
+            {
+                        indent();
+                        out.print("FIELD(" + f.index + " " + f.name);
+                        indentCount++;
+                        printTypeDesc(f.type);
+                        indentCount--;
+                        out.print(")");
+            }
+                indentCount--;
+                out.print(")");
+    }
+
+    private void printTypeDesc(Types.Type t)
+    {
+                indent();
+                if (t instanceof Types.FUNCTION)
+            {
+                        Types.FUNCTION fn = (Types.FUNCTION) t;
+                        out.print("FUNCTION(" + fn.name);
+                        indentCount++;
+                        indent();
+                        out.print(simpleType(fn.self));
+                        printRecordDesc(fn.formals);
+                        printTypeDesc(fn.result);
+                        indentCount--;
+                        out.print(")");
+            }
+                else if (t instanceof Types.ARRAY)
+            {
+                        out.print("ARRAY(");
+                        indentCount++;
+                        printTypeDesc(((Types.ARRAY) t).element);
+                        indentCount--;
+                        out.print(")");
+            }
+                else
+            { out.print(simpleType(t)); }
     }
 }

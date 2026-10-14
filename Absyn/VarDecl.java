@@ -10,6 +10,8 @@ public class VarDecl extends Absyn
     public Type type;
     public String name;
     public Expr init;
+    /** Resolved type, filled in by the type checker. */
+    public Types.Type resolved;
     public VarDecl(Type type, String name, Expr init)
     {
 		this.type = type;

@@ -12,6 +12,8 @@ public class ClassDecl extends Absyn
     public String parent;
     public LinkedList<VarDecl> fields;
     public LinkedList<MethodDecl> methods;
+    /** Filled in by the type checker. */
+    public Types.CLASS descriptor;
     public ClassDecl(String name, String parent, 
 		     LinkedList<VarDecl> fields, LinkedList<MethodDecl> methods)
     {
