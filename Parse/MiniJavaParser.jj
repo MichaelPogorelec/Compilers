@@ -480,9 +480,9 @@ Absyn.Expr NewExpr() :
         (   "(" ")"
                 { return new Absyn.NewObjectExpr(type); }
           | "[" size = Expression() "]" { dims.add(size); }
-            // Trailing empty dimensions: "new int[5][][]".
-            // CHECK against mjparser output -- see note in chat.
-            ( LOOKAHEAD(2) "[" "]" { type = new Absyn.ArrayType(type); } )*
+            // Trailing empty dimensions: "new int[5][][]" is recorded as
+            // dims = [5, null, null]; the base type stays unwrapped.
+            ( LOOKAHEAD(2) "[" "]" { dims.add(null); } )*
                 { return new Absyn.NewArrayExpr(type, dims); }
         )
 }
