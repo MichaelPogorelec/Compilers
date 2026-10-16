@@ -1,3 +1,11 @@
+/**
+ * COSC 4400 - Project 5
+ * Type checker for the Concurrent MiniJava programming language
+ * @authors Michael Pogorelec
+ * Instructor Dr. Brylow
+ * TA-BOT:MAILTO michael.pogorelec@marquette.edu
+ */
+
 package Semant;
 
 import java.io.BufferedReader;

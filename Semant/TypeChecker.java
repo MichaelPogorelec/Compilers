@@ -1,3 +1,11 @@
+/**
+ * COSC 4400 - Project 5
+ * Type checker for the Concurrent MiniJava programming language
+ * @authors Michael Pogorelec
+ * Instructor Dr. Brylow
+ * TA-BOT:MAILTO michael.pogorelec@marquette.edu
+ */
+
 package Semant;
 
 import java.util.ArrayList;
@@ -42,6 +50,7 @@ import Absyn.NotEqExpr;
 import Absyn.NotExpr;
 import Absyn.NullExpr;
 import Absyn.OrExpr;
+import Absyn.PrintVisitor;
 import Absyn.Program;
 import Absyn.Stmt;
 import Absyn.StringLiteral;
@@ -64,6 +73,7 @@ import Types.INT;
 import Types.NIL;
 import Types.OBJECT;
 import Types.RECORD;
+import Types.STRING;
 import Types.VOID;
 
 /** Semantic analysis for the MiniJava AST. */
@@ -97,7 +107,7 @@ public class TypeChecker
         collectMembers(program.classes);
         populateInstances(program.classes);
         checkOverrides(program.classes);
-        if (checkBodies)
+        if (checkBodies && errorCount == 0)
         {
             for (ClassDecl declaration : program.classes)
             {
@@ -341,7 +351,7 @@ public class TypeChecker
             {
                 if (!names.add(field.name))
                 {
-                    error(field.name + " is already defined in " + declaration.name);
+                    error(field.name + " is already defined in " + declaration.name, field);
                     continue;
                 }
                 field.resolved = resolveType(field.type);
@@ -407,40 +417,59 @@ public class TypeChecker
         currentClass = null;
     }
 
+
     private void checkMethod(MethodDecl method)
     {
+        // Formals live in an outer scope; locals are entered in an inner
+        // scope, so a local may share a name with a formal (e.g. main's
+        // String[] argument) and the local wins on lookup.
         variables.beginScope();
-        Set<String> names = new HashSet<String>();
+        Set<String> formalNames = new HashSet<String>();
         for (Formal formal : method.params)
         {
             Types.Type type = resolveType(formal.type);
-            if (!names.add(formal.name))
-                error(formal.name + " is already defined in " + method.name);
+            if (!formalNames.add(formal.name))
+                error(formal.name + " is already defined in " + method.name, formal);
             else
                 variables.put(formal.name, type);
         }
+
+        variables.beginScope();
+        Set<String> localNames = new HashSet<String>();
+        ArrayList<Types.Type> localTypes = new ArrayList<Types.Type>();
+        // Pass 1: enter every local so duplicates are reported up front.
         for (VarDecl local : method.locals)
         {
             Types.Type type = resolveType(local.type);
-            local.resolved = type;
-            if (!names.add(local.name))
-                error(local.name + " is already defined in " + method.name);
+            localTypes.add(type);
+            if (!localNames.add(local.name))
+                error(local.name + " is already defined in " + method.name, local);
             else
                 variables.put(local.name, type);
-            if (local.init != null)
-                require(type, checkExpr(local.init));
+            local.resolved = type;
         }
+        // Pass 2: check the initializers against the declared types.
+        int position = 0;
+        for (VarDecl local : method.locals)
+        {
+            Types.Type type = localTypes.get(position++);
+            if (local.init != null)
+                require(type, checkExpr(local.init), local.init);
+        }
+
         for (Stmt statement : method.stmts)
             checkStmt(statement);
         if (!(method instanceof VoidDecl) && method.returnType != null)
-            require(resolveType(method.returnType), checkExpr(method.returnVal));
+            require(resolveType(method.returnType),
+                    checkExpr(method.returnVal), method.returnVal);
+        variables.endScope();
         variables.endScope();
     }
 
     private Types.Type resolveType(Type type)
     {
         if (type == null)
-            return null;
+            return new VOID();
         if (resolvedTypeNodes.contains(type))
             return resolvedTypes.get(type);
         Types.Type result;
@@ -458,12 +487,12 @@ public class TypeChecker
                 result = ((CLASS) descriptor).instance;
             else
             {
-                error("cannot resolve class " + name);
-                result = null;
+                error("cannot resolve class " + name, type);
+                result = new VOID();
             }
         }
         else
-            result = null;
+            result = new VOID();
         resolvedTypes.put(type, result);
         resolvedTypeNodes.add(type);
         return result;
@@ -479,14 +508,14 @@ public class TypeChecker
         else if (statement instanceof AssignStmt)
         {
             AssignStmt assignment = (AssignStmt) statement;
-            Types.Type target = checkAssignable(assignment.lhs);
+            Types.Type target = checkExpr(assignment.lhs);
             Types.Type value = checkExpr(assignment.rhs);
-            require(target, value);
+            require(target, value, assignment);
         }
         else if (statement instanceof IfStmt)
         {
             IfStmt conditional = (IfStmt) statement;
-            require(new BOOLEAN(), checkExpr(conditional.test));
+            require(new BOOLEAN(), checkExpr(conditional.test), conditional);
             checkStmt(conditional.thenStmt);
             if (conditional.elseStmt != null)
                 checkStmt(conditional.elseStmt);
@@ -494,68 +523,95 @@ public class TypeChecker
         else if (statement instanceof WhileStmt)
         {
             WhileStmt loop = (WhileStmt) statement;
-            require(new BOOLEAN(), checkExpr(loop.test));
+            require(new BOOLEAN(), checkExpr(loop.test), loop);
             checkStmt(loop.body);
         }
         else if (statement instanceof XinuCallStmt)
         {
-            for (Expr argument : ((XinuCallStmt) statement).args)
-                checkExpr(argument);
+            XinuCallStmt call = (XinuCallStmt) statement;
+            checkXinuArguments(call.method, call.args);
         }
     }
 
+    /** print takes a String, printint takes an int; others are unchecked. */
+    private void checkXinuArguments(String method, java.util.List<Expr> arguments)
+    {
+        Types.Type expected = null;
+        if (method.equals("print"))
+            expected = ((CLASS) classes.get("String")).instance;
+        else if (method.equals("printint"))
+            expected = new INT();
+        for (Expr argument : arguments)
+        {
+            Types.Type actual = checkExpr(argument);
+            if (expected != null)
+                require(expected, actual, argument);
+        }
+    }
+
+    /**
+     * Types an expression.  A failed expression is typed VOID so that the
+     * enclosing construct reports its own mismatch (errors cascade), while
+     * operator errors keep the operator's nominal result type.
+     */
     private Types.Type checkExpr(Expr expression)
     {
         if (expression == null)
-            return null;
+            return new VOID();
         if (expression instanceof IntegerLiteral)
             return new INT();
         if (expression instanceof TrueExpr || expression instanceof FalseExpr)
             return new BOOLEAN();
         if (expression instanceof StringLiteral)
-            return classes.get("String") instanceof CLASS
-                ? ((CLASS) classes.get("String")).instance : null;
+            return new STRING();
         if (expression instanceof NullExpr)
             return new NIL();
         if (expression instanceof ThisExpr)
-            return currentClass == null ? null : currentClass.instance;
-        if (expression instanceof IdentifierExpr || expression instanceof FieldExpr ||
-            expression instanceof ArrayExpr)
-            return checkAssignable((AssignableExpr) expression);
+            return currentClass == null ? new VOID() : currentClass.instance;
+        if (expression instanceof IdentifierExpr)
+            return checkIdentifier((IdentifierExpr) expression);
+        if (expression instanceof FieldExpr)
+            return checkField((FieldExpr) expression);
+        if (expression instanceof ArrayExpr)
+            return checkArrayAccess((ArrayExpr) expression);
         if (expression instanceof NewObjectExpr)
-        {
-            Types.Type type = resolveType(((NewObjectExpr) expression).type);
-            return type;
-        }
+            return resolveType(((NewObjectExpr) expression).type);
         if (expression instanceof NewArrayExpr)
         {
             NewArrayExpr allocation = (NewArrayExpr) expression;
-            Types.Type element = resolveType(allocation.type);
+            Types.Type result = resolveType(allocation.type);
             for (Expr dimension : allocation.dims)
-                require(new INT(), checkExpr(dimension));
-            return element == null ? null : new ARRAY(element);
+            {
+                // A null dimension is an empty "[]" and adds a level only.
+                if (dimension != null)
+                    require(new INT(), checkExpr(dimension), dimension);
+                result = new ARRAY(result);
+            }
+            return result;
         }
         if (expression instanceof CallExpr)
             return checkCall((CallExpr) expression);
         if (expression instanceof XinuCallExpr)
         {
-            for (Expr argument : ((XinuCallExpr) expression).args)
-                checkExpr(argument);
+            XinuCallExpr call = (XinuCallExpr) expression;
+            checkXinuArguments(call.method, call.args);
             return new INT();
         }
         if (expression instanceof NegExpr)
         {
-            Types.Type operand = checkExpr(((NegExpr) expression).operand);
-            if (operand != null && !(operand instanceof INT))
-                operatorError("-", operand, null);
-            return operand == null ? null : new INT();
+            NegExpr negation = (NegExpr) expression;
+            Types.Type operand = checkExpr(negation.operand);
+            if (!sameType(operand, new INT()))
+                unaryOperatorError("-", operand, negation);
+            return new INT();
         }
         if (expression instanceof NotExpr)
         {
-            Types.Type operand = checkExpr(((NotExpr) expression).operand);
-            if (operand != null && !(operand instanceof BOOLEAN))
-                operatorError("!", operand, null);
-            return operand == null ? null : new BOOLEAN();
+            NotExpr negation = (NotExpr) expression;
+            Types.Type operand = checkExpr(negation.operand);
+            if (!sameType(operand, new BOOLEAN()))
+                unaryOperatorError("!", operand, negation);
+            return new BOOLEAN();
         }
         if (expression instanceof AddExpr)
             return checkBinary((AddExpr) expression, "+", new INT(), new INT());
@@ -577,91 +633,90 @@ public class TypeChecker
             return checkEquality((EqualExpr) expression, "==");
         if (expression instanceof NotEqExpr)
             return checkEquality((NotEqExpr) expression, "!=");
-        return null;
+        return new VOID();
     }
 
-    private Types.Type checkAssignable(AssignableExpr expression)
+    private Types.Type checkIdentifier(IdentifierExpr expression)
     {
-        if (expression instanceof IdentifierExpr)
+        String name = expression.id;
+        if (variables.contains(name))
+            return (Types.Type) variables.get(name);
+        FIELD field = findField(currentClass, name);
+        if (field != null)
+            return field.type;
+        error("cannot resolve symbol " + name, expression);
+        return new VOID();
+    }
+
+    private Types.Type checkField(FieldExpr access)
+    {
+        Types.Type receiver = checkExpr(access.object);
+        if (receiver instanceof ARRAY && access.name.equals("length"))
         {
-            String name = ((IdentifierExpr) expression).id;
-            if (variables.contains(name))
-                return (Types.Type) variables.get(name);
-            FIELD field = findField(currentClass, name);
-            if (field != null)
-                return field.type;
-            error("cannot resolve symbol " + name);
-            return null;
+            access.index = -1;
+            return new INT();
         }
-        if (expression instanceof FieldExpr)
+        CLASS descriptor = objectClass(receiver);
+        if (descriptor == null)
         {
-            FieldExpr access = (FieldExpr) expression;
-            Types.Type receiver = checkExpr(access.object);
-            if (receiver instanceof ARRAY && access.name.equals("length"))
-                return new INT();
-            CLASS descriptor = objectClass(receiver);
-            if (receiver == null)
-                return null;
-            if (descriptor == null)
-            {
-                error("target not object, type " + typeName(receiver));
-                return null;
-            }
-            FIELD field = findField(descriptor, access.name);
-            if (field == null)
-                error("cannot resolve symbol " + access.name);
-            else
-            {
-                FIELD slot = descriptor.instance.fields.get(access.name);
-                access.index = slot == null ? -1 : slot.index;
-            }
-            return field == null ? null : field.type;
+            error("target not object, type " + receiver, access);
+            return new VOID();
         }
-        if (expression instanceof ArrayExpr)
+        FIELD field = findField(descriptor, access.name);
+        if (field == null)
         {
-            ArrayExpr access = (ArrayExpr) expression;
-            Types.Type array = checkExpr(access.array);
-            require(new INT(), checkExpr(access.index));
-            if (array == null)
-                return null;
-            if (!(array instanceof ARRAY))
-            {
-                error("array required, but " + typeName(array) + " found");
-                return null;
-            }
-            return ((ARRAY) array).element;
+            error("cannot resolve field " + access.name, access);
+            return new VOID();
         }
-        return null;
+        FIELD slot = descriptor.instance.fields.get(access.name);
+        access.index = slot == null ? -1 : slot.index;
+        return field.type;
+    }
+
+    private Types.Type checkArrayAccess(ArrayExpr access)
+    {
+        Types.Type array = checkExpr(access.array);
+        Types.Type index = checkExpr(access.index);
+        Types.Type result = new VOID();
+        if (array instanceof ARRAY)
+            result = ((ARRAY) array).element;
+        else
+            error("incompatible types: array required, but " + array + " found",
+                  access);
+        require(new INT(), index, access.index);
+        return result;
     }
 
     private Types.Type checkCall(CallExpr call)
     {
         Types.Type receiver = checkExpr(call.object);
         CLASS descriptor = objectClass(receiver);
-        if (receiver != null && descriptor == null)
-            error("target not object, type " + typeName(receiver));
-        FUNCTION method = descriptor == null ? null : findMethod(descriptor, call.method);
-        if (method == null && descriptor != null)
-            error("cannot resolve method " + call.method);
-        if (method != null)
+        FUNCTION method = null;
+        if (descriptor == null)
+            error("target not object, type " + receiver, call);
+        else
         {
-            FIELD slot = descriptor.instance.methods.get(call.method);
-            call.index = slot == null ? -1 : slot.index;
+            method = findMethod(descriptor, call.method);
+            if (method == null)
+                error("cannot resolve method " + call.method, call);
         }
 
         ArrayList<Types.Type> arguments = new ArrayList<Types.Type>();
         for (Expr argument : call.args)
             arguments.add(checkExpr(argument));
         if (method == null)
-            return null;
+            return new VOID();
         if (arguments.size() != method.formals.size())
         {
-            error("mismatch in number of arguments");
+            error("mismatch in number of arguments", call);
             return method.result;
         }
         java.util.Iterator<FIELD> formals = method.formals.iterator();
-        for (Types.Type argument : arguments)
-            require(formals.next().type, argument);
+        for (int position = 0; position < arguments.size(); position++)
+            require(formals.next().type, arguments.get(position),
+                    call.args.get(position));
+        FIELD slot = descriptor.instance.methods.get(call.method);
+        call.index = slot == null ? -1 : slot.index;
         return method.result;
     }
 
@@ -670,40 +725,35 @@ public class TypeChecker
     {
         Types.Type left = checkExpr(expression.e1);
         Types.Type right = checkExpr(expression.e2);
-        boolean leftValid = left == null || sameType(left, operandType);
-        boolean rightValid = right == null || sameType(right, operandType);
-        if (!leftValid || !rightValid)
-        {
-            if (left != null && right != null)
-                operatorError(operator, left, right);
-            else if (left != null)
-                operatorError(operator, left, null);
-            else if (right != null)
-                operatorError(operator, right, null);
-            return null;
-        }
-        return left == null || right == null ? null : resultType;
+        if (!sameType(left, operandType) || !sameType(right, operandType))
+            error("operator " + operator + " cannot be applied to " + left +
+                  ", " + right, expression);
+        return resultType;
     }
 
     private Types.Type checkEquality(Absyn.BinOpExpr expression, String operator)
     {
         Types.Type left = checkExpr(expression.e1);
         Types.Type right = checkExpr(expression.e2);
-        if (left == null || right == null)
-            return null;
         if (!assignable(left, right) && !assignable(right, left))
-        {
-            operatorError(operator, left, right);
-            return null;
-        }
+            error("operator " + operator + " cannot be applied to " + left +
+                  ", " + right, expression);
         return new BOOLEAN();
     }
 
-    private void require(Types.Type expected, Types.Type actual)
+    private void unaryOperatorError(String operator, Types.Type operand,
+                                    Absyn.Visitable node)
     {
-        if (expected != null && actual != null && !assignable(actual, expected))
-            error("incompatible types: " + typeName(expected) +
-                  " required, but " + typeName(actual) + " found");
+        error("operator " + operator + " cannot be applied to " + operand, node);
+    }
+
+    /** Reports a mismatch, printing the offending AST node as context. */
+    private void require(Types.Type expected, Types.Type actual,
+                         Absyn.Visitable context)
+    {
+        if (!assignable(actual, expected))
+            error("incompatible types: " + expected + " required, but " +
+                  actual + " found", context);
     }
 
     private boolean assignable(Types.Type actual, Types.Type expected)
@@ -759,31 +809,23 @@ public class TypeChecker
         return null;
     }
 
-    private void operatorError(String operator, Types.Type first, Types.Type second)
-    {
-        String message = "operator " + operator + " cannot be applied to " +
-            typeName(first);
-        if (second != null)
-            message += ", " + typeName(second);
-        error(message);
-    }
-
-    private String typeName(Types.Type type)
-    {
-        if (type instanceof OBJECT)
-            return ((OBJECT) type).myClass.name;
-        if (type instanceof CLASS)
-            return ((CLASS) type).name;
-        if (type instanceof NIL)
-            return "null";
-        if (type instanceof ARRAY)
-            return typeName(((ARRAY) type).element) + "[]";
-        return type == null ? "<unknown>" : type.toString();
-    }
-
+    /** Class-level error (no AST node to show). */
     private void error(String message)
     {
         errorCount++;
         System.out.println("ERROR " + message + ": line not available");
+    }
+
+    /** Body-level error: the message followed by the offending AST node. */
+    private void error(String message, Absyn.Visitable node)
+    {
+        errorCount++;
+        PrintWriter writer = new PrintWriter(System.out);
+        writer.print("ERROR " + message + ": ");
+        PrintVisitor printer = new PrintVisitor(writer);
+        printer.indentCount = 10;
+        node.accept(printer);
+        writer.println();
+        writer.flush();
     }
 }
