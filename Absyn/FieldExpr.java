@@ -8,7 +8,7 @@ public class FieldExpr extends AssignableExpr
     public Expr   object;
     public String name;
     /** Index of the field in the receiver's fields record (-1 for array length); set by the type checker. */
-    public int index = -1;
+    public Integer index = null;
 
     public FieldExpr(Expr object, String name)
     {

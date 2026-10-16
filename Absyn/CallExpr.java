@@ -10,7 +10,7 @@ public class CallExpr extends Expr
     public String           method;
     public LinkedList<Expr> args;
     /** Index of the method in the receiver's methods record; set by the type checker. */
-    public int index = -1;
+    public Integer index = null;
 
     public CallExpr(Expr object, String method, LinkedList<Expr> args)
     {

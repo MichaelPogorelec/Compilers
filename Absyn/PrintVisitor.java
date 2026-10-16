@@ -115,12 +115,22 @@ public class PrintVisitor implements Visitor
 		out.print("VarDecl(");
 		ast.type.accept(this);
 		out.print(" " + ast.name);
+		if (null == ast.resolved)
+	    {
+			// Not yet annotated (e.g. shown in an error message).
+			if (null == ast.init)
+		    {   out.print(" null");   }
+			else
+		    {   ast.init.accept(this);   }
+			out.print(")");
+			return;
+	    }
+		indentCount++;
 		if (null == ast.init)
 	    {   out.print(" null");   } 
 		else
 	    { ast.init.accept(this); }
 		out.print(" ");
-		indentCount++;
 		printTypeDesc(ast.resolved);
 		indentCount--;
 		out.print(")");
@@ -337,8 +347,11 @@ public class PrintVisitor implements Visitor
                 ast.object.accept(this);
                 indent();
                 out.print(ast.name);
-                indent();
-                out.print(ast.index);
+                if (null != ast.index)
+                {
+                        indent();
+                        out.print(ast.index);
+                }
                 indentCount--;
                 out.print(")");
     }
@@ -365,8 +378,11 @@ public class PrintVisitor implements Visitor
                 indent();
                 out.print(ast.method);
                 visit(ast.args);
-                indent();
-                out.print(ast.index);
+                if (null != ast.index)
+                {
+                        indent();
+                        out.print(ast.index);
+                }
                 indentCount--;
                 out.print(")");
     }
