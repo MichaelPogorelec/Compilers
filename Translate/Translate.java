@@ -464,14 +464,16 @@ public class Translate implements Absyn.TreeVisitor
      */
     public Exp visit(Absyn.CallExpr e)
     {
+	// Receiver and arguments are translated first; the temp and label
+	// for the receiver null check come after, as in the reference.
 	Tree.Exp receiver = e.object.accept(this).unEx();
-	Temp t = new Temp();
-	Tree.Stm prologue = SEQ(MOVE(TEMP(t), receiver), nullCheck(TEMP(t)));
-
 	LinkedList<Tree.Exp> arguments = new LinkedList<Tree.Exp>();
-	arguments.add(TEMP(t));
 	for (Absyn.Expr a : e.args)
 	    arguments.add(a.accept(this).unEx());
+
+	Temp t = new Temp();
+	Tree.Stm prologue = SEQ(MOVE(TEMP(t), receiver), nullCheck(TEMP(t)));
+	arguments.addFirst(TEMP(t));
 
 	// The vtable pointer is the word just before the object.
 	Tree.Exp vtable = MEM(BINOP(Tree.BINOP.PLUS, TEMP(t), CONST(-ws)));
