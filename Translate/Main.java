@@ -1,47 +1,55 @@
+/**
+ * COSC 4400 - Project 7
+ * Translator driver: parses and type checks a MiniJava program read from
+ * standard input, translates it to Tree intermediate code, and prints
+ * each fragment.
+ * @authors Michael Pogorelec
+ * Instructor Dr. Brylow
+ * TA-BOT:MAILTO michael.pogorelec@marquette.edu
+ */
 /* Copyright (C) 1997-2003, Purdue Research Foundation of Purdue University.
  * All rights reserved.  */
 
 package Translate;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.util.Iterator;
 
-//import Semant.*;
 import Absyn.Program;
-import Parse.*;
-
-import java.util.HashMap; 
-import java.util.List;
-import java.util.LinkedList;
-
-//import Translate.Translate;
+import Parse.MiniJavaParser;
+import Parse.ParseException;
+import Semant.TypeChecker;
 
 public class Main 
 {
     public static void main(String args[])
     {
-	InputStreamReader isr =	new InputStreamReader(System.in);
-        java.io.Reader reader = new BufferedReader(isr);
+	BufferedReader reader =
+	    new BufferedReader(new InputStreamReader(System.in));
 
-	Absyn.Program parse = null;
+	// This builds on the earlier phases: the parser of Project 3 and
+	// the type checker of Project 5, which annotates the AST that the
+	// translator reads (class descriptors, method and field indexes).
+	Program program = null;
 	try
 	{
-	    // TODO: If you are abandoning your previous compiler
-	    // phases, this code will use the provided JavaCC grammar
-	    // to read in output from the reference implementation
-	    // parser and typechecker.
-	    // If you are building on your prior projects, comment this
-	    // out, and replace it with code the invokes your parser
-	    // and typechecker (See Parse.Main and Semant.Main).
-	    parse = new Parse.ReadTypes(reader).Program();
+	    program = new MiniJavaParser(reader).Goal();
 	}
 	catch (ParseException p)
 	{
 	    System.err.println(p.toString());
 	    System.exit(-1);
 	}
-		
+
+	// Type errors are reported by the checker; there is nothing to
+	// translate if there are any.
+	if (!new TypeChecker().check(program))
+	    return;
+
 	Translate translate = new Translate(new Riscv.RiscvFrame());
-	parse.accept(translate);
+	program.accept(translate);
 		
 	PrintWriter writer = new PrintWriter(System.out);
 		
@@ -71,4 +79,3 @@ public class Main
 	writer.flush();
     }
 }	
-

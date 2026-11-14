@@ -13,4 +13,6 @@ public class ThreadDecl extends ClassDecl
     }
 
     public void accept(Visitor v) { v.visit(this); }
+    /** Visitor pattern dispatch for the translator. */
+    public Translate.Exp accept(TreeVisitor v) { return v.visit(this); }
 }

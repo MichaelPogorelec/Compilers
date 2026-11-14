@@ -18,15 +18,21 @@ MJ_JAVACCGEN = $(DEFAULT_JAVACCGEN) \
 	$(PARSEDIR)/$(MJ_PARSER)TokenManager.java
 
 
-# Project 4 - Parser
+# Project 7 - Translator (builds on the parser and type checker)
 
 ASTSRC = $(wildcard Absyn/*.java)
 TYPESRC = $(wildcard Types/*.java)
 SYMBOLSRC = $(wildcard Symbol/*.java)
 SEMANTSRC = Semant/Main.java Semant/TypeChecker.java
+TEMPSRC = $(wildcard Temp/*.java)
+TREESRC = $(wildcard Tree/*.java)
+FRAMESRC = $(wildcard Frame/*.java)
+RISCVSRC = $(wildcard Riscv/*.java)
+TRANSLATESRC = $(wildcard Translate/*.java)
 
 PARSESRC = Parse/Main.java $(ASTSRC)
-PROJECTSRC = $(ASTSRC) $(TYPESRC) $(SYMBOLSRC) $(SEMANTSRC)
+PROJECTSRC = $(ASTSRC) $(TYPESRC) $(SYMBOLSRC) $(SEMANTSRC) \
+	$(TEMPSRC) $(TREESRC) $(FRAMESRC) $(RISCVSRC) $(TRANSLATESRC)
 
 all: 	$(PARSEDIR)/$(MJ_PARSER).java $(PROJECTSRC:.java=.class)
 
@@ -40,6 +46,9 @@ $(PARSEDIR)/$(MJ_PARSER).java: $(PARSEDIR)/$(MJ_PARSER).jj
 clean:
 	rm -f $(PARSESRC:.java=.class) $(TYPESRC:.java=.class) \
 		$(SYMBOLSRC:.java=.class) $(SEMANTSRC:.java=.class) \
+		$(TEMPSRC:.java=.class) $(TREESRC:.java=.class) \
+		$(FRAMESRC:.java=.class) $(RISCVSRC:.java=.class) \
+		$(TRANSLATESRC:.java=.class) \
 		$(MJ_JAVACCGEN) $(MJ_JAVACCGEN:.java=.class)\
                 '$(PARSEDIR)/$(MJ_PARSER)$$JJCalls.class' \
                 '$(PARSEDIR)/$(MJ_PARSER)$$LookaheadSuccess.class' 

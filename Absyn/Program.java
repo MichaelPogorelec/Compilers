@@ -17,4 +17,6 @@ public class Program extends Absyn
 
     /** Visitor pattern dispatch. */
     public void accept(Visitor v) {v.visit(this); }
+    /** Visitor pattern dispatch for the translator. */
+    public Translate.Exp accept(TreeVisitor v) { return v.visit(this); }
 }

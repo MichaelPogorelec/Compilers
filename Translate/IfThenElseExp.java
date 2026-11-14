@@ -1,3 +1,10 @@
+/**
+ * COSC 4400 - Project 7
+ * Modified for the AST-to-Tree translator.
+ * @authors Michael Pogorelec
+ * Instructor Dr. Brylow
+ * TA-BOT:MAILTO michael.pogorelec@marquette.edu
+ */
 /* Copyright (C) 1997-2003, Purdue Research Foundation of Purdue University.
  * All rights reserved.  */
 package Translate;
@@ -58,20 +65,52 @@ public class IfThenElseExp extends Exp {
 	falseExp = fExp;
     }
 
+    /** True if e is the constant expression 0 (false). */
+    private static boolean isFalse(Exp e)
+    {
+	return (e instanceof Ex) && (((Ex) e).exp instanceof Tree.CONST)
+	    && ((Tree.CONST) ((Ex) e).exp).value == 0;
+    }
+
+    /** True if e is a nonzero constant expression (true). */
+    private static boolean isTrue(Exp e)
+    {
+	return (e instanceof Ex) && (((Ex) e).exp instanceof Tree.CONST)
+	    && ((Tree.CONST) ((Ex) e).exp).value != 0;
+    }
+
+    /**
+     * Used when this expression is a condition (e.g. the test of an if or
+     * while): each branch becomes jumps to tt (true) or ff (false), so no
+     * 0/1 value is ever materialized.
+     */
     Tree.Stm unCx(Label tt, Label ff) {
-	// TODO: Check for optimizations
-        Tree.Stm tStm = trueExp.unNx();
-	Tree.Stm fStm = falseExp.unNx();
+	// !c : swap the targets
+	if (isFalse(trueExp) && isTrue(falseExp))
+	    return cond.unCx(ff, tt);
+	// a && b : a false means false, a true means test b
+	if (isFalse(falseExp))
+	{
+	    Label t = new Label();
+	    return SEQ(cond.unCx(t, ff),
+		       SEQ(LABEL(t), trueExp.unCx(tt, ff)));
+	}
+	// a || b : a true means true, a false means test b
+	if (isTrue(trueExp))
+	{
+	    Label f = new Label();
+	    return SEQ(cond.unCx(tt, f),
+		       SEQ(LABEL(f), falseExp.unCx(tt, ff)));
+	}
 	Label t = new Label();
 	Label f = new Label();
-        Tree.Stm condStm = cond.unCx(t, f);
-	return SEQ(condStm,
-		   SEQ(SEQ(LABEL(t), tStm),
-		       SEQ(LABEL(f), fStm)));
+	return SEQ(cond.unCx(t, f),
+		   SEQ(LABEL(t),
+		       SEQ(trueExp.unCx(tt, ff),
+			   SEQ(LABEL(f), falseExp.unCx(tt, ff)))));
     }
 
     Tree.Exp unEx() {
-	// TODO: Check for optimizations
         Tree.Exp tExp = trueExp.unEx();
 	Tree.Exp fExp = falseExp.unEx();
 	Temp r = new Temp();
@@ -90,13 +129,14 @@ public class IfThenElseExp extends Exp {
     }
 
     Tree.Stm unNx() {
-	// TODO: Check for optimizations
         Tree.Stm tStm = trueExp.unNx();
         Tree.Stm fStm = falseExp.unNx();
-	Label t, f, join;
-	t = new Label();
-	f = new Label();
-	join = new Label();
+	Label t = new Label();
+	Label f = new Label();
+	// if-then with no else part: fall through to the false label
+	if (fStm == null)
+	    return SEQ(cond.unCx(t, f), SEQ(LABEL(t), SEQ(tStm, LABEL(f))));
+	Label join = new Label();
 	tStm = SEQ(SEQ(LABEL(t), tStm), JUMP(join));
 	fStm = SEQ(SEQ(LABEL(f), fStm), JUMP(join));
 	return SEQ(SEQ(cond.unCx(t, f), SEQ(tStm, fStm)), LABEL(join));

@@ -10,4 +10,6 @@ public class NotExpr extends Expr
     public NotExpr(Expr operand) { this.operand = operand; }
 
     public void accept(Visitor v) { v.visit(this); }
+    /** Visitor pattern dispatch for the translator. */
+    public Translate.Exp accept(TreeVisitor v) { return v.visit(this); }
 }

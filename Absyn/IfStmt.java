@@ -16,4 +16,6 @@ public class IfStmt extends Stmt
     }
 
     public void accept(Visitor v) { v.visit(this); }
+    /** Visitor pattern dispatch for the translator. */
+    public Translate.Exp accept(TreeVisitor v) { return v.visit(this); }
 }
