@@ -1,8 +1,5 @@
 /**
  * COSC 4400 - Project 8
- * RISC-V instruction selector: tiles canonical Tree statements with RISC-V
- * instructions (RiscvPatterns.txt), using an unlimited supply of temps.
- * Expression nodes return the temp that holds their value.
  * @authors Michael Pogorelec
  * Instructor Dr. Brylow
  * TA-BOT:MAILTO michael.pogorelec@marquette.edu
