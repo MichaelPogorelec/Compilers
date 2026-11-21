@@ -1,3 +1,10 @@
+/**
+ * COSC 4400 - Project 8
+ * Temporaries and labels, with support for reading them back from IR text.
+ * @authors Michael Pogorelec
+ * Instructor Dr. Brylow
+ * TA-BOT:MAILTO michael.pogorelec@marquette.edu
+ */
 /* Copyright (C) 1997-2003, Purdue Research Foundation of Purdue University.
  * All rights reserved.  */
 package Temp;
@@ -28,6 +35,15 @@ public class Label
 		name = n;
 	}
 	
+	/**
+	 * Makes sure fresh labels are numbered above n, so they cannot clash
+	 * with a label named "Ln" that was read from text.
+	 */
+	public static void reserve(int n)
+	{
+		if (count <= n) count = n + 1;
+	}
+
 	/**
 	 * Makes a new label with an arbitrary name.
 	 */

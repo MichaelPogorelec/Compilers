@@ -1,3 +1,13 @@
+/**
+ * COSC 4400 - Project 8
+ * Instruction selection driver: obtains the Tree fragments (by running the
+ * parser, type checker and translator of the earlier projects on a MiniJava
+ * program, or by reading Project 7 IR text), canonicalizes and trace
+ * schedules each procedure, and selects RISC-V instructions for it.
+ * @authors Michael Pogorelec
+ * Instructor Dr. Brylow
+ * TA-BOT:MAILTO michael.pogorelec@marquette.edu
+ */
 /* Copyright (C) 2009, Dennis Brylow
  * All rights reserved.  */
 
@@ -13,14 +23,14 @@ import java.util.LinkedList;
 
 public class Main 
 {
-    static final String VERSION = "COSC 170" +
+    static final String VERSION = "COSC 4400" +
 		" Instruction Selection" +
-		" Spring 2009" +
-		" v1.1";
+		" Fall 2026";
 
 	public static void usage()
 	{
-		System.err.println("Usage:  [-options] (file.java | -)");
+		System.err.println("Usage:  [-options] [file.java | file.ir | -]");
+		System.err.println("\t(with no file, the program is read from standard input)");
 		System.err.println("\twhere options include:");
 		System.err.println("\t-a\tOutput Assembly stage");
 		System.err.println("\t-b\tOutput Basic Block stage");
@@ -29,6 +39,46 @@ public class Main
 		System.err.println("\t-t\tOutput Trace Scheduling stage");
 		System.err.println("\t-v\tPrint version and exit");
 		System.exit(-2);
+	}
+
+
+	/**
+	 * The fragments to select instructions for.  Input that starts with
+	 * DataFrag( or ProcFrag( is Project 7 IR text; anything else is a
+	 * MiniJava program, which is run through the parser, the type checker
+	 * and the translator.  Returns null when the program does not type
+	 * check (the checker has already reported the errors).
+	 */
+	static List<Translate.Frag> readFrags(java.io.Reader reader)
+		throws ParseException
+	{
+		java.io.BufferedReader in = new java.io.BufferedReader(reader);
+		StringBuilder text = new StringBuilder();
+		try
+		{
+			char[] buf = new char[8192];
+			int n;
+			while ((n = in.read(buf)) > 0) text.append(buf, 0, n);
+		}
+		catch (java.io.IOException e)
+		{
+			System.err.println(e.toString());
+			System.exit(-1);
+		}
+		String input = text.toString();
+		String head = input.trim();
+
+		if (head.startsWith("DataFrag(") || head.startsWith("ProcFrag("))
+			return new Parse.ReadFrags(input).Program();
+
+		Absyn.Program program =
+			new Parse.MiniJavaParser(new java.io.StringReader(input)).Goal();
+		if (!new Semant.TypeChecker().check(program))
+			return null;
+		Translate.Translate translate =
+			new Translate.Translate(new Riscv.RiscvFrame());
+		program.accept(translate);
+		return translate.results();
 	}
 
     public static void main(String args[])
@@ -77,19 +127,23 @@ public class Main
 		    }
 	    }
 		
-		if (null == reader) usage();
+		// No file argument: read standard input.
+		if (null == reader)
+		    reader = new java.io.BufferedReader(
+			new java.io.InputStreamReader(System.in));
 		
-		LinkedList<Translate.Frag> frags = null;
+		List<Translate.Frag> frags = null;
 
 		try
 	    {
-			frags = new Parse.ReadFrags(reader).Program();
+			frags = readFrags(reader);
 	    }
 		catch (ParseException p)
 	    {
 			System.err.println(p.toString());
 			System.exit(-1);
 	    }
+		if (frags == null) return;
 
 		PrintWriter writer = new PrintWriter(System.out);
 		

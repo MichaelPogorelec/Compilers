@@ -1,6 +1,6 @@
 /**
  * COSC 4400 - Project 7
- * Modified for the AST-to-Tree translator.
+ * Modified for the AST-to-Tree translator and the instruction selector.
  * @authors Michael Pogorelec
  * Instructor Dr. Brylow
  * TA-BOT:MAILTO michael.pogorelec@marquette.edu
@@ -45,7 +45,10 @@ public abstract class Frame
   public abstract String tempMap(Temp.Temp temp);
   public abstract void printFrame(java.io.PrintWriter pw);
 
+  /** Adds the function prologue / epilogue statements to the traced body. */
   public abstract void procEntryExit1(List<Tree.Stm> body);
+  /** Instruction selection for a traced, canonical statement list. */
+  public abstract List<Assem.Instr> codeGen(List<Tree.Stm> stms);
   /* procEntryExit2/3 operate on Assem.Instr lists; the Assem package is not
    * part of this project, so they are omitted until it is introduced. */
 }

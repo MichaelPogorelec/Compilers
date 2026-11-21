@@ -1,3 +1,10 @@
+/**
+ * COSC 4400 - Project 8
+ * RISC-V frame, with the view shift (procEntryExit1) and codeGen.
+ * @authors Michael Pogorelec
+ * Instructor Dr. Brylow
+ * TA-BOT:MAILTO michael.pogorelec@marquette.edu
+ */
 /*
  * Copyright 2024 - Marquette University
  */
@@ -342,7 +349,32 @@ public class RiscvFrame extends Frame.Frame
 	writer.println(")");
     }
 
+    /**
+     * View shift: copy each incoming argument from where the caller put
+     * it (an argument register or a stack slot) into the place the body
+     * expects the formal (a temp).  These moves come before everything
+     * else, including the first label, which may be a loop head.
+     */
     public void procEntryExit1(List<Tree.Stm> body)
     {
+	LinkedList<Tree.Stm> shift = new LinkedList<Tree.Stm>();
+	for (int i = 0; i < formals.size(); i++)
+	{
+	    Frame.Access formal = formals.get(i);
+	    Frame.Access actual = actuals.get(i);
+	    if (formal == actual)
+		continue;
+	    shift.add(MOVE(formal.exp(this), actual.exp(this)));
+	}
+	body.addAll(0, shift);
+    }
+
+    /** Selects RISC-V instructions for the (canonical, traced) statements. */
+    public List<Assem.Instr> codeGen(List<Tree.Stm> stms)
+    {
+	Codegen gen = new Codegen(this);
+	for (Tree.Stm s : stms)
+	    s.accept(gen);
+	return gen.ilist;
     }
 }
