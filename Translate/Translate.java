@@ -277,10 +277,13 @@ public class Translate implements Absyn.TreeVisitor
 	    body = SEQ(body, v.accept(this).unNx());
 	for (Absyn.Stmt s : m.stmts)
 	    body = SEQ(body, s.accept(this).unNx());
-	// main and void methods return 0.
-	Tree.Exp result = (m.returnVal == null)
-	    ? CONST(0) : m.returnVal.accept(this).unEx();
-	body = SEQ(body, MOVE(TEMP(cur.RV()), result));
+	// main returns 0; a void method returns nothing, so RV is left alone.
+	if (!(m instanceof Absyn.VoidDecl))
+	{
+	    Tree.Exp result = (m.returnVal == null)
+		? CONST(0) : m.returnVal.accept(this).unEx();
+	    body = SEQ(body, MOVE(TEMP(cur.RV()), result));
+	}
 
 	frags.add(new ProcFrag(body, cur));
 
