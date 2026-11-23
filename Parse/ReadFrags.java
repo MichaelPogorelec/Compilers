@@ -182,13 +182,12 @@ public class ReadFrags
 	    skipSpace();
 	    if (pos >= text.length())
 	    {
-		// A label in the data (a string's) takes the number the code
-		// gave it, so the two always agree; data labels no code uses
-		// are numbered last.
+		// Data is kept exactly as printed: a string's label keeps the
+		// number the translator gave it, even though the labels in the
+		// code are renumbered (this is what the reference prints).
 		for (int i = 0; i < frags.size(); i++)
 		    if (frags.get(i) == null)
-			frags.set(i, new Translate.DataFrag(
-				      relabel(rawData.removeFirst())));
+			frags.set(i, new Translate.DataFrag(rawData.removeFirst()));
 		return frags;
 	    }
 	    if (text.startsWith("DataFrag(", pos))
@@ -214,18 +213,6 @@ public class ReadFrags
 	String data = text.substring(pos, end);
 	pos = end + 2;
 	return data;
-    }
-
-    /** Renames the Ln labels that start lines of a DataFrag. */
-    private String relabel(String data)
-    {
-	StringBuffer out = new StringBuffer();
-	java.util.regex.Matcher m =
-	    java.util.regex.Pattern.compile("(?m)^(L[0-9]+)(?=:)").matcher(data);
-	while (m.find())
-	    m.appendReplacement(out, labelFor(m.group(1)).toString());
-	m.appendTail(out);
-	return out.toString();
     }
 
     private Translate.Frag procFrag() throws ParseException
