@@ -36,12 +36,12 @@ public class Label
 	}
 	
 	/**
-	 * Makes sure fresh labels are numbered above n, so they cannot clash
-	 * with a label named "Ln" that was read from text.
+	 * Restarts the numbering of fresh labels at L0.  Used before IR text
+	 * is read back in, so its labels are numbered by order of appearance.
 	 */
-	public static void reserve(int n)
+	public static void reset()
 	{
-		if (count <= n) count = n + 1;
+		count = 0;
 	}
 
 	/**

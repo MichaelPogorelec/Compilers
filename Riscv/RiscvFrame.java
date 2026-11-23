@@ -26,6 +26,9 @@ import java.util.Arrays;
 
 public class RiscvFrame extends Frame.Frame 
 {
+    /** What printFrame calls the frame; the instruction selector's output
+     *  uses the qualified class name. */
+    public static String headerName = "RiscvFrame";
     // Keeps track of current negative offset (bytes) of next local below fp
     public int localsOffset = 0;
     // Keeps track of maximum args (bytes) spilled into frame
@@ -304,7 +307,7 @@ public class RiscvFrame extends Frame.Frame
 
     public void printFrame(java.io.PrintWriter writer)
     {
-	writer.println("RiscvFrame(");
+	writer.println(headerName + "(");
 	writer.println(this.name + ":");
 	writer.print("Formals(");
     
@@ -350,23 +353,40 @@ public class RiscvFrame extends Frame.Frame
     }
 
     /**
-     * View shift: copy each incoming argument from where the caller put
-     * it (an argument register or a stack slot) into the place the body
-     * expects the formal (a temp).  These moves come before everything
-     * else, including the first label, which may be a loop head.
+     * Prologue and epilogue code around the traced body:
+     *   1. copy each callee-save register (ra, s1..s11) into a fresh temp,
+     *   2. the view shift: copy each incoming argument from where the
+     *      caller put it (an argument register or a stack slot) into the
+     *      place the body expects the formal,
+     *   3. the body,
+     *   4. copy the saved temps back into the callee-save registers, in
+     *      the opposite order (after the body's last label).
+     * Everything precedes the first label, which may be a loop head.
      */
     public void procEntryExit1(List<Tree.Stm> body)
     {
-	LinkedList<Tree.Stm> shift = new LinkedList<Tree.Stm>();
+	LinkedList<Tree.Stm> entry = new LinkedList<Tree.Stm>();
+	LinkedList<Tree.Stm> exit = new LinkedList<Tree.Stm>();
+
+	Temp[] saved = new Temp[calleeSaves.length];
+	for (int i = 0; i < calleeSaves.length; i++)
+	{
+	    saved[i] = new Temp();
+	    entry.add(MOVE(TEMP(saved[i]), TEMP(calleeSaves[i])));
+	}
+	for (int i = calleeSaves.length - 1; i >= 0; i--)
+	    exit.add(MOVE(TEMP(calleeSaves[i]), TEMP(saved[i])));
+
 	for (int i = 0; i < formals.size(); i++)
 	{
 	    Frame.Access formal = formals.get(i);
 	    Frame.Access actual = actuals.get(i);
 	    if (formal == actual)
 		continue;
-	    shift.add(MOVE(formal.exp(this), actual.exp(this)));
+	    entry.add(MOVE(formal.exp(this), actual.exp(this)));
 	}
-	body.addAll(0, shift);
+	body.addAll(0, entry);
+	body.addAll(exit);
     }
 
     /** Selects RISC-V instructions for the (canonical, traced) statements. */

@@ -69,7 +69,10 @@ public class Main
 		String head = input.trim();
 
 		if (head.startsWith("DataFrag(") || head.startsWith("ProcFrag("))
+		{
+			Temp.Label.reset();
 			return new Parse.ReadFrags(input).Program();
+		}
 
 		Absyn.Program program =
 			new Parse.MiniJavaParser(new java.io.StringReader(input)).Goal();
@@ -78,7 +81,37 @@ public class Main
 		Translate.Translate translate =
 			new Translate.Translate(new Riscv.RiscvFrame());
 		program.accept(translate);
-		return translate.results();
+
+		// Hand the translator's output to the selector as text, exactly
+		// as if it had been saved and read back: that renumbers labels
+		// by order of appearance.
+		java.io.StringWriter text2 = new java.io.StringWriter();
+		java.io.PrintWriter out = new java.io.PrintWriter(text2);
+		Riscv.RiscvFrame.headerName = "RiscvFrame";
+		for (Translate.Frag f : translate.results())
+		{
+			if (f instanceof Translate.DataFrag)
+			{
+				out.println("DataFrag(");
+				out.println(f);
+				out.println(")");
+			}
+			else
+			{
+				Translate.ProcFrag p = (Translate.ProcFrag) f;
+				out.println("ProcFrag(");
+				p.frame.printFrame(out);
+				if (p.body != null)
+				{
+					new Tree.Print(out, p.body);
+					out.println();
+				}
+				out.println(")");
+			}
+		}
+		out.flush();
+		Temp.Label.reset();
+		return new Parse.ReadFrags(text2.toString()).Program();
 	}
 
     public static void main(String args[])
@@ -145,6 +178,8 @@ public class Main
 	    }
 		if (frags == null) return;
 
+		// The selector's output names the frame class in full.
+		Riscv.RiscvFrame.headerName = "Riscv.RiscvFrame";
 		PrintWriter writer = new PrintWriter(System.out);
 		
 		for (Translate.Frag frag : frags)

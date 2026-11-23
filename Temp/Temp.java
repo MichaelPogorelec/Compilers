@@ -27,6 +27,19 @@ public class Temp
 		all.add(this);
 	}
 
+    /** How many temps exist, which is also the next temp's number. */
+    public static int count() { return count; }
+
+    /** This temp's number. */
+    public int number() { return num; }
+
+    /** Forgets every temp numbered n or more, so numbering restarts at n. */
+    public static void truncate(int n)
+    {
+	while (all.size() > n) all.remove(all.size() - 1);
+	count = n;
+    }
+
     /** The temp numbered n, making temps up to n if there are not yet. */
     public static Temp forNumber(int n)
 	{

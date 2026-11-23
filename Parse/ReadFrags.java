@@ -29,6 +29,7 @@ public class ReadFrags
 	// Loading the frame class first creates the register temps, so the
 	// temp numbers in the text line up with them.
 	this.factory = new Riscv.RiscvFrame();
+	restartTemps();
     }
 
     /* ---------------------------------------------------------------- */
@@ -94,6 +95,12 @@ public class ReadFrags
 	return t;
     }
 
+    /**
+     * Labels named Ln are made fresh, in order of first appearance in the
+     * text, so they are renumbered L0, L1, ... whatever their numbers were
+     * in the translator's output.  Every other label (methods, vtables,
+     * run-time routines) keeps its name.
+     */
     private Label label() throws ParseException
     {
 	String name = word();
@@ -102,12 +109,43 @@ public class ReadFrags
 	{
 	    if (name.equals("_BADPTR"))      l = factory.badPtr();
 	    else if (name.equals("_BADSUB")) l = factory.badSub();
+	    else if (name.matches("L[0-9]+")) l = new Label();
 	    else                             l = new Label(name);
 	    labels.put(name, l);
-	    if (name.matches("L[0-9]+"))
-		Label.reserve(Integer.parseInt(name.substring(1)));
 	}
 	return l;
+    }
+
+    /** Number of the hardwired register temps: t0 .. t(registerLimit-1). */
+    private int registerLimit;
+    /** Fresh temps for the text's non-register temps, by their text name. */
+    private java.util.HashMap<Integer, Temp> temps =
+	new java.util.HashMap<Integer, Temp>();
+
+    /**
+     * Register temps are the machine's own.  Every other temp in the text
+     * is made fresh, in order of first appearance, so they are numbered by
+     * where they occur in the text, whatever their numbers were in the
+     * translator's output.  Numbering restarts where the text's own first
+     * non-register temp began.
+     */
+    private void restartTemps()
+    {
+	registerLimit = 0;
+	for (Temp r : Riscv.RiscvFrame.registers)
+	    registerLimit = Math.max(registerLimit, r.number() + 1);
+	int base = Integer.MAX_VALUE;
+	java.util.regex.Matcher m =
+	    java.util.regex.Pattern.compile("\\bt([0-9]+)\\b").matcher(text);
+	while (m.find())
+	{
+	    int n = Integer.parseInt(m.group(1));
+	    if (n >= registerLimit && n < base) base = n;
+	}
+	if (base == Integer.MAX_VALUE) base = registerLimit;
+	Temp.truncate(registerLimit);
+	while (Temp.count() < base)
+	    new Temp();
     }
 
     private Temp temp() throws ParseException
@@ -115,7 +153,16 @@ public class ReadFrags
 	String name = word();
 	if (!name.matches("t[0-9]+"))
 	    throw error("expected a temp but found \"" + name + "\"");
-	return Temp.forNumber(Integer.parseInt(name.substring(1)));
+	int n = Integer.parseInt(name.substring(1));
+	if (n < registerLimit)
+	    return Temp.forNumber(n);
+	Temp t = temps.get(n);
+	if (t == null)
+	{
+	    t = new Temp();
+	    temps.put(n, t);
+	}
+	return t;
     }
 
     /* ---------------------------------------------------------------- */
