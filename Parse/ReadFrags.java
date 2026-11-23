@@ -103,7 +103,11 @@ public class ReadFrags
      */
     private Label label() throws ParseException
     {
-	String name = word();
+	return labelFor(word());
+    }
+
+    private Label labelFor(String name)
+    {
 	Label l = labels.get(name);
 	if (l == null)
 	{
@@ -172,12 +176,26 @@ public class ReadFrags
     public LinkedList<Translate.Frag> Program() throws ParseException
     {
 	LinkedList<Translate.Frag> frags = new LinkedList<Translate.Frag>();
+	LinkedList<String> rawData = new LinkedList<String>();
 	for (;;)
 	{
 	    skipSpace();
-	    if (pos >= text.length()) return frags;
+	    if (pos >= text.length())
+	    {
+		// A label in the data (a string's) takes the number the code
+		// gave it, so the two always agree; data labels no code uses
+		// are numbered last.
+		for (int i = 0; i < frags.size(); i++)
+		    if (frags.get(i) == null)
+			frags.set(i, new Translate.DataFrag(
+				      relabel(rawData.removeFirst())));
+		return frags;
+	    }
 	    if (text.startsWith("DataFrag(", pos))
-		frags.add(dataFrag());
+	    {
+		rawData.add(dataFragText());
+		frags.add(null);
+	    }
 	    else if (text.startsWith("ProcFrag(", pos))
 		frags.add(procFrag());
 	    else
@@ -186,7 +204,7 @@ public class ReadFrags
     }
 
     /** DataFrag(NL data NL ")" : the data is kept exactly as printed. */
-    private Translate.Frag dataFrag() throws ParseException
+    private String dataFragText() throws ParseException
     {
 	pos += "DataFrag(".length();
 	if (pos < text.length() && text.charAt(pos) == '\r') pos++;
@@ -195,7 +213,19 @@ public class ReadFrags
 	if (end < 0) throw error("unterminated DataFrag");
 	String data = text.substring(pos, end);
 	pos = end + 2;
-	return new Translate.DataFrag(data);
+	return data;
+    }
+
+    /** Renames the Ln labels that start lines of a DataFrag. */
+    private String relabel(String data)
+    {
+	StringBuffer out = new StringBuffer();
+	java.util.regex.Matcher m =
+	    java.util.regex.Pattern.compile("(?m)^(L[0-9]+)(?=:)").matcher(data);
+	while (m.find())
+	    m.appendReplacement(out, labelFor(m.group(1)).toString());
+	m.appendTail(out);
+	return out.toString();
     }
 
     private Translate.Frag procFrag() throws ParseException
